@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: aegis-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: aegis
+      POSTGRES_PASSWORD: aegis_dev_password
+      POSTGRES_DB: aegis_sandbox
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: aegis-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
