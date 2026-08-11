@@ -28,3 +28,6 @@ export const tools = pgTable('tools', {
   updatedAt: timestamp('updated_at', {withTimezone: true}).notNull().defaultNow(),
   updatedBy: text('updated_by').notNull().default('system'),
 });
+
+export type Tool = typeof tools.$inferSelect;
+export type NewTool = typeof tools.$inferInsert;
