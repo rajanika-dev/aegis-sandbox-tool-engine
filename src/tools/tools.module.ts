@@ -6,10 +6,12 @@ import { ToolsController } from './tools.controller';
 import { RateCheckService } from './rate-check.service';
 import { HttpToolExecutorService } from './http-tool-executor.service';
 import { ToolTransformService } from './tool-transform.service';
+import { ToolExecutionRecorderService } from './tool-execution-recorder.service';
+
 
 @Module({
   imports: [DatabaseModule, RedisModule],
   controllers: [ToolsController],
-  providers: [ToolResolverService, RateCheckService, HttpToolExecutorService, ToolTransformService],
+  providers: [ToolResolverService, RateCheckService, HttpToolExecutorService, ToolTransformService, ToolExecutionRecorderService],
 })
 export class ToolsModule {}
