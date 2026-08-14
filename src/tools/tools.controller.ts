@@ -2,6 +2,7 @@ import { Controller, Get, Param, Post } from '@nestjs/common';
 import { HttpToolExecutorService } from './http-tool-executor.service';
 import { RateCheckService } from './rate-check.service';
 import { ToolResolverService } from './tool-resolver.service';
+import { ToolTransformService } from './tool-transform.service';
 
 @Controller('tools')
 export class ToolsController {
@@ -9,6 +10,7 @@ export class ToolsController {
     private readonly toolResolverService: ToolResolverService,
     private readonly rateCheckService: RateCheckService,
     private readonly httpToolExecutorService: HttpToolExecutorService,
+    private readonly toolTransformService: ToolTransformService,
   ) {}
 
   @Get(':slug/resolve')
@@ -38,6 +40,7 @@ export class ToolsController {
     const resolved = await this.toolResolverService.resolveBySlug(slug);
     const rateCheck = await this.rateCheckService.check(resolved.tool);
     const execution = await this.httpToolExecutorService.execute(resolved.tool);
+    const transformed = this.toolTransformService.transform(execution);
 
     return {
       resolveSource: resolved.source,
@@ -48,6 +51,7 @@ export class ToolsController {
         type: resolved.tool.type,
       },
       execution,
+      transformed,
     };
   }
 }
