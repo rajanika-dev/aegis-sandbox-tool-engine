@@ -15,6 +15,11 @@ export class ToolsController {
     private readonly toolExecutionRecorderService: ToolExecutionRecorderService,
   ) {}
 
+  @Get('executions/recent')
+  getRecentExecutions() {
+    return this.toolExecutionRecorderService.findRecent(5);
+  }
+  
   @Get(':slug/resolve')
   resolveTool(@Param('slug') slug: string) {
     return this.toolResolverService.resolveBySlug(slug);
