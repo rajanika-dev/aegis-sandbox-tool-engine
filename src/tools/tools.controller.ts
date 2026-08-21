@@ -4,6 +4,7 @@ import { RateCheckService } from './rate-check.service';
 import { ToolResolverService } from './tool-resolver.service';
 import { ToolTransformService } from './tool-transform.service';
 import { ToolExecutionRecorderService } from './tool-execution-recorder.service';
+import { ToolPipelineService } from './tool-pipeline.service';
 
 @Controller('tools')
 export class ToolsController {
@@ -13,7 +14,13 @@ export class ToolsController {
     private readonly httpToolExecutorService: HttpToolExecutorService,
     private readonly toolTransformService: ToolTransformService,
     private readonly toolExecutionRecorderService: ToolExecutionRecorderService,
+    private readonly toolPipelineService: ToolPipelineService,
   ) {}
+
+  @Get()
+  listTools() {
+    return this.toolResolverService.listEnabledTools();
+  }
 
   @Get('executions/recent')
   getRecentExecutions() {
@@ -43,34 +50,7 @@ export class ToolsController {
   }
 
   @Post(':slug/execute')
-  async executeTool(@Param('slug') slug: string) {
-    const resolved = await this.toolResolverService.resolveBySlug(slug);
-    const rateCheck = await this.rateCheckService.check(resolved.tool);
-    const startedAt = Date.now();
-    const execution = await this.httpToolExecutorService.execute(resolved.tool);
-    const transformed = this.toolTransformService.transform(execution);
-    const record = await this.toolExecutionRecorderService.record({
-      tool: resolved.tool,
-      resolveSource: resolved.source,
-      status: execution.ok ? 'success': 'failure',
-      latencyMs: Date.now() - startedAt,
-      httpStatus: execution.status,
-      rawOutput: execution,
-      transformedOutput: transformed,
-      createdBy: 'rajanika',
-    });
-
-    return {
-      resolveSource: resolved.source,
-      rateCheck,
-      tool: {
-        id: resolved.tool.id,
-        slug: resolved.tool.slug,
-        type: resolved.tool.type,
-      },
-      execution,
-      transformed,
-      record,
-    };
+  executeTool(@Param('slug') slug: string) {
+    return this.toolPipelineService.run(slug);
   }
 }

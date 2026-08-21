@@ -7,11 +7,14 @@ import { RateCheckService } from './rate-check.service';
 import { HttpToolExecutorService } from './http-tool-executor.service';
 import { ToolTransformService } from './tool-transform.service';
 import { ToolExecutionRecorderService } from './tool-execution-recorder.service';
+import { ToolPipelineService } from './tool-pipeline.service';
 
 
 @Module({
   imports: [DatabaseModule, RedisModule],
   controllers: [ToolsController],
-  providers: [ToolResolverService, RateCheckService, HttpToolExecutorService, ToolTransformService, ToolExecutionRecorderService],
+  providers: [ToolResolverService, RateCheckService, HttpToolExecutorService, ToolTransformService, 
+              ToolExecutionRecorderService, ToolPipelineService],
+  exports: [ToolResolverService, ToolPipelineService, ToolExecutionRecorderService],
 })
 export class ToolsModule {}

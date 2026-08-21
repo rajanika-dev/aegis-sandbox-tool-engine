@@ -61,6 +61,25 @@ export class ToolResolverService {
     };
   }
 
+  async listEnabledTools() {
+  return this.db
+    .select({
+      id: tools.id,
+      name: tools.name,
+      slug: tools.slug,
+      type: tools.type,
+      description: tools.description,
+      enabled: tools.enabled,
+      rateLimit: tools.rateLimit,
+      timeoutMs: tools.timeoutMs,
+      createdBy: tools.createdBy,
+      updatedBy: tools.updatedBy,
+    })
+    .from(tools)
+    .where(eq(tools.enabled, true));
+  }
+
+
   private getCacheKey(slug: string): string {
     return `tool:slug:${slug}`;
   }
