@@ -4,9 +4,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health.controller';
 import { ToolsModule } from './tools/tools.module';
+import { MockModule } from './mock/mock.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }),ToolsModule,],
+  imports: [ConfigModule.forRoot({ isGlobal: true }),ToolsModule,MockModule],
   controllers: [AppController, HealthController],
   providers: [AppService],
 })

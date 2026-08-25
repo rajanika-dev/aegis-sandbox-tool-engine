@@ -22,7 +22,7 @@ export class ToolPipelineService {
     const startedAt = Date.now();
 
     const execution = await this.httpToolExecutorService.execute(resolved.tool);
-    const transformed = this.toolTransformService.transform(execution);
+    const transformed = this.toolTransformService.transform(resolved.tool, execution);
 
     const record = await this.toolExecutionRecorderService.record({
       tool: resolved.tool,

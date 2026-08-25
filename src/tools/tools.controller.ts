@@ -1,10 +1,11 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { HttpToolExecutorService } from './http-tool-executor.service';
 import { RateCheckService } from './rate-check.service';
 import { ToolResolverService } from './tool-resolver.service';
 import { ToolTransformService } from './tool-transform.service';
 import { ToolExecutionRecorderService } from './tool-execution-recorder.service';
 import { ToolPipelineService } from './tool-pipeline.service';
+import { ToolRegistryService } from './tool-registry.service';
 
 @Controller('tools')
 export class ToolsController {
@@ -15,6 +16,7 @@ export class ToolsController {
     private readonly toolTransformService: ToolTransformService,
     private readonly toolExecutionRecorderService: ToolExecutionRecorderService,
     private readonly toolPipelineService: ToolPipelineService,
+    private readonly toolRegistryService: ToolRegistryService,
   ) {}
 
   @Get()
@@ -47,6 +49,11 @@ export class ToolsController {
         rateLimit: resolved.tool.rateLimit,
       },
     };
+  }
+
+  @Post()
+  registerTool(@Body() body: unknown) {
+    return this.toolRegistryService.upsertTool(body as any);
   }
 
   @Post(':slug/execute')
