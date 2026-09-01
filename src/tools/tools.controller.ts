@@ -57,7 +57,13 @@ export class ToolsController {
   }
 
   @Post(':slug/execute')
-  executeTool(@Param('slug') slug: string) {
-    return this.toolPipelineService.run(slug);
+  executeTool(@Param('slug') slug: string, @Body() body?: {
+    input?: Record<string, unknown>; createdBy?: string },
+  ) {
+    return this.toolPipelineService.run(
+      slug,
+      body?.input ?? {},
+      body?.createdBy ?? 'rajanika',
+    );
   }
 }

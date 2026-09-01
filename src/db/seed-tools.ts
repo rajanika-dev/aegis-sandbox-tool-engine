@@ -81,6 +81,44 @@ const seedTools: NewTool[] = [
     createdBy: 'rajanika',
     updatedBy: 'rajanika',
   },
+  {
+     name: 'Geolocation Lookup',
+     slug: 'geo_lookup',
+     type: 'http',
+     description: 'Converts a city, state, and country into latitude and longitude using OpenWeather.',
+     config: {
+        method: 'GET',
+        url: 'https://api.openweathermap.org/geo/1.0/direct?q={{city}},{{state}},{{country}}&limit=1&appid={{env.OPENWEATHER_API_KEY}}',
+        headers: {},
+    },
+    rateLimit: {
+        maxRequests: 5,
+        windowSeconds: 60,
+    },
+    timeoutMs: 5000,
+    enabled: true,
+    createdBy: 'rajanika',
+    updatedBy: 'rajanika',
+ },
+ {
+     name: 'Weather Lookup',
+     slug: 'weather_lookup',
+     type: 'http',
+     description: 'Fetches current weather using latitude and longitude.',
+     config: {
+        method: 'GET',
+        url: 'https://api.open-meteo.com/v1/forecast?latitude={{latitude}}&longitude={{longitude}}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto',
+        headers: {},
+    },
+    rateLimit: {
+     maxRequests: 5,
+     windowSeconds: 60,
+     },
+     timeoutMs: 5000,
+     enabled: true,
+     createdBy: 'rajanika',
+    updatedBy: 'rajanika',
+    },
 ];
 
 const deprecatedSlugs = [

@@ -14,12 +14,26 @@ type TransformResult = {
 
 @Injectable()
 export class ToolTransformService {
-  transform(tool: Tool, execution: HttpExecutionResult): TransformResult {
+  transform(
+    tool: Tool,
+    execution: HttpExecutionResult,
+    input: Record<string, unknown> = {},
+  ): TransformResult {
+
     const data = execution.data;
 
-    if (['weather_now', 'weather_hillsboro_current'].includes(tool.slug)) {
-      return this.transformWeather(data);
+    if (tool.slug === 'geo_lookup') {
+      return this.transformGeoLookup(data);
     }
+
+    if (
+      ['weather_now', 'weather_lookup', 'weather_hillsboro_current'].includes(
+        tool.slug,
+      )
+    ) {
+        return this.transformWeather(data, input);
+      }
+
 
     if (['permit_status', 'permit_status_sample'].includes(tool.slug)) {
       return this.transformPermitStatus(data);
@@ -47,7 +61,40 @@ export class ToolTransformService {
     };
   }
 
-  private transformWeather(data: unknown): TransformResult {
+  private transformGeoLookup(data: unknown): TransformResult {
+   if (!Array.isArray(data) || data.length === 0 || !this.isRecord(data[0])) {
+      return {
+        normalized: {
+          found: false,
+        },
+        summary: 'No matching location was found.',
+      };
+    }
+
+    const location = data[0];
+
+    return {
+      normalized: {
+        found: true,
+        name: location.name,
+        state: location.state,
+        country: location.country,
+       latitude: location.lat,
+        longitude: location.lon,
+      },
+      summary: `${this.valueOrUnknown(location.name)}, ${this.valueOrUnknown(
+        location.state,
+      )}, ${this.valueOrUnknown(location.country)} is located at latitude ${this.valueOrUnknown(
+        location.lat,
+      )} and longitude ${this.valueOrUnknown(location.lon)}.`,
+    };
+  }
+
+  
+  private transformWeather(
+    data: unknown,
+    input: Record<string, unknown>,
+  ): TransformResult {
     if (!this.isRecord(data) || !this.isRecord(data.current)) {
       return {
         normalized: data,
@@ -55,21 +102,23 @@ export class ToolTransformService {
       };
     }
 
-    const current = data.current;
-    const units = this.isRecord(data.current_units) ? data.current_units : {};
+     const current = data.current;
+     const units = this.isRecord(data.current_units) ? data.current_units : {};
 
-    const temperature = current.temperature_2m;
-    const humidity = current.relative_humidity_2m;
-    const windSpeed = current.wind_speed_10m;
-    const weatherCode = current.weather_code;
-    const observedAt = current.time;
+     const location = this.formatWeatherLocation(input);
 
-    const temperatureUnit = this.valueOrUnknown(units.temperature_2m);
-    const windSpeedUnit = this.valueOrUnknown(units.wind_speed_10m);
+     const temperature = current.temperature_2m;
+     const humidity = current.relative_humidity_2m;
+     const windSpeed = current.wind_speed_10m;
+      const weatherCode = current.weather_code;
+     const observedAt = current.time;
 
-    return {
-      normalized: {
-        location: 'Hillsboro, OR',
+     const temperatureUnit = this.valueOrUnknown(units.temperature_2m);
+     const windSpeedUnit = this.valueOrUnknown(units.wind_speed_10m);
+
+     return {
+        normalized: {
+        location,
         temperature,
         temperatureUnit,
         humidityPercent: humidity,
@@ -78,13 +127,42 @@ export class ToolTransformService {
         weatherCode,
         observedAt,
       },
-      summary: `Hillsboro weather is ${this.valueOrUnknown(
-        temperature,
+      summary: `${location} weather is ${this.valueOrUnknown(
+       temperature,
       )}${temperatureUnit}, humidity is ${this.valueOrUnknown(
-        humidity,
+       humidity,
       )}%, and wind speed is ${this.valueOrUnknown(windSpeed)} ${windSpeedUnit}.`,
-    };
+     };
+    }
+
+  private formatWeatherLocation(input: Record<string, unknown>): string {
+   const city = input.city;
+   const state = input.state;
+   const country = input.country;
+
+   if (city && state) {
+      return `${String(city)}, ${String(state)}`;
+   }
+
+   if (city && country) {
+     return `${String(city)}, ${String(country)}`;
+   }
+
+   if (city) {
+     return String(city);
+   }
+
+   const latitude = input.latitude;
+   const longitude = input.longitude;
+
+   if (latitude && longitude) {
+     return `lat ${String(latitude)}, lon ${String(longitude)}`;
+   }
+
+   return 'Hillsboro, OR';
   }
+
+
 
   private transformPermitStatus(data: unknown): TransformResult {
     if (!this.isRecord(data)) {

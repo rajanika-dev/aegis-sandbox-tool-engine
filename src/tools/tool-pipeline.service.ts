@@ -15,14 +15,23 @@ export class ToolPipelineService {
     private readonly toolExecutionRecorderService: ToolExecutionRecorderService,
   ) {}
 
-  async run(toolSlug: string, createdBy = 'rajanika') {
+  async run(
+    toolSlug: string, 
+    input: Record<string, unknown> = {},
+    createdBy = 'rajanika') {
     const resolved = await this.toolResolverService.resolveBySlug(toolSlug);
     const rateCheck = await this.rateCheckService.check(resolved.tool);
 
     const startedAt = Date.now();
 
-    const execution = await this.httpToolExecutorService.execute(resolved.tool);
-    const transformed = this.toolTransformService.transform(resolved.tool, execution);
+    const execution = await this.httpToolExecutorService.execute(
+      resolved.tool, input,);
+    const transformed = this.toolTransformService.transform(
+      resolved.tool,
+      execution,
+      input,
+    );
+
 
     const record = await this.toolExecutionRecorderService.record({
       tool: resolved.tool,
