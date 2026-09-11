@@ -1,0 +1,35 @@
+services:
+  api:
+    build: .
+    container_name: aegis-api
+    ports:
+      - "${HOST_PORT:-80}:3000"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: aegis-postgres-prod
+    environment:
+      POSTGRES_USER: aegis
+      POSTGRES_PASSWORD: aegis_dev_password
+      POSTGRES_DB: aegis_sandbox
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: aegis-redis-prod
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_prod_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
