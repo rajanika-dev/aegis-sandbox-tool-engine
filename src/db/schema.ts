@@ -56,8 +56,32 @@ export const toolExecutions = pgTable('tool_executions', {
   createdBy: text('created_by').notNull().default('system'),
 });
 
+export const agentRequests = pgTable('agent_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  message: text('message').notNull(),
+  createdBy: text('created_by').notNull().default('demo-user'),
+
+  status: text('status').notNull(),
+  answer: text('answer'),
+  planner: text('planner'),
+
+  steps: jsonb('steps'),
+  errorMessage: text('error_message'),
+
+  userAgent: text('user_agent'),
+  ipAddress: text('ip_address'),
+
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export type Tool = typeof tools.$inferSelect;
 export type NewTool = typeof tools.$inferInsert;
 export type ToolExecution = typeof toolExecutions.$inferSelect;
 export type NewToolExecution = typeof toolExecutions.$inferInsert;
+export type AgentRequest = typeof agentRequests.$inferSelect;
+export type NewAgentRequest = typeof agentRequests.$inferInsert;
+
 

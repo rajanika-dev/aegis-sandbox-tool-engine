@@ -29,6 +29,12 @@ export class DemoController {
 
   <div class="card">
     <h2>Ask AEGIS</h2>
+    <label><strong>Your name</strong></label>
+    <input
+        id="createdBy"
+        placeholder="Enter your name"
+        style="width: 100%; padding: 10px; margin: 8px 0 14px; border-radius: 8px; border: 1px solid #ccc;"
+    />
     <textarea id="message">Show me the last 5 tool executions.</textarea>
     <br />
     <button class="primary" onclick="runQuery()">Run</button>
@@ -53,6 +59,12 @@ export class DemoController {
     <h2>Raw Response</h2>
     <pre id="raw">No response yet.</pre>
   </div>
+  <div class="card">
+    <h2>Recent Demo Requests</h2>
+    <button class="example" onclick="loadRecentRequests()">Refresh recent requests</button>
+    <div id="recentRequests" class="muted">No recent requests loaded.</div>
+  </div>
+
 
   <script>
     function setExample(text) {
@@ -78,7 +90,9 @@ export class DemoController {
         const response = await fetch('/agent/query', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message, createdBy: 'demo-ui' })
+          body: JSON.stringify({
+            message,
+            createdBy: document.getElementById('createdBy').value.trim() || 'demo-user'})
         });
 
         const data = await response.json();
@@ -90,6 +104,7 @@ export class DemoController {
         answer.textContent = data.answer || 'No answer returned.';
         raw.textContent = JSON.stringify(data, null, 2);
         renderSteps(data.steps || []);
+        loadRecentRequests();
       } catch (error) {
         answer.textContent = 'Request failed.';
         steps.textContent = '';
@@ -123,6 +138,41 @@ export class DemoController {
         steps.appendChild(div);
       }
     }
+    async function loadRecentRequests() {
+    const container = document.getElementById('recentRequests');
+    container.textContent = 'Loading...';
+
+    try {
+        const response = await fetch('/agent/requests/recent');
+        const data = await response.json();
+
+        if (!Array.isArray(data) || data.length === 0) {
+        container.textContent = 'No requests logged yet.';
+        return;
+        }
+
+        container.innerHTML = '';
+
+        for (const item of data) {
+        const div = document.createElement('div');
+        div.className = 'step';
+
+        div.textContent = [
+            'Time: ' + item.createdAt,
+            'User: ' + item.createdBy,
+            'Status: ' + item.status,
+            'Message: ' + item.message,
+            item.answer ? 'Answer: ' + item.answer : null,
+            item.errorMessage ? 'Error: ' + item.errorMessage : null,
+        ].filter(Boolean).join('\\n');
+
+        container.appendChild(div);
+        }
+    } catch (error) {
+        container.textContent = error.message || String(error);
+        }
+    }
+
   </script>
 </body>
 </html>
