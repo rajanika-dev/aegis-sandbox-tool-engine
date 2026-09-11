@@ -22,6 +22,26 @@ export class ToolTransformService {
 
     const data = execution.data;
 
+    if (tool.slug === 'sql_query' || tool.type === 'sql') {
+      const executionObject = this.asObject(execution);
+      const data = this.asObject(executionObject?.data);
+
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+      const rowCount =
+        typeof data?.rowCount === 'number' ? data.rowCount : rows.length;
+
+      return {
+        summary: `SQL query returned ${rowCount} row${rowCount === 1 ? '' : 's'}.`,
+        normalized: {
+          sql: data?.sql,
+          rows,
+          rowCount,
+          latencyMs: data?.latencyMs,
+        },
+      };
+    }
+
+
     if (tool.slug === 'geo_lookup') {
       return this.transformGeoLookup(data);
     }
@@ -244,4 +264,14 @@ export class ToolTransformService {
 
     return String(value);
   }
+
+  private asObject(value: unknown): Record<string, unknown> | undefined {
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+       return value as Record<string, unknown>;
+    }
+
+     return undefined;
+  }
+
+
 }

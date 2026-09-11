@@ -119,6 +119,26 @@ const seedTools: NewTool[] = [
      createdBy: 'rajanika',
     updatedBy: 'rajanika',
     },
+  {
+    name: 'SQL Query',
+    slug: 'sql_query',
+    type: 'sql',
+    description:
+      'Runs safe read-only SQL queries against the local AEGIS Postgres database.',
+    config: {
+      allowedTables: ['tools', 'tool_executions'],
+      maxRows: 50,
+      statementTimeoutMs: 5000,
+    },
+    rateLimit: {
+      maxRequests: 20,
+      windowSeconds: 60,
+    },
+    timeoutMs: 5000,
+    enabled: true,
+    updatedAt: new Date(),
+    updatedBy: 'seed',
+  }
 ];
 
 const deprecatedSlugs = [

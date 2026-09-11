@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { HttpToolExecutorService } from './http-tool-executor.service';
 import { RateCheckService } from './rate-check.service';
 import { ToolExecutionRecorderService } from './tool-execution-recorder.service';
 import { ToolResolverService } from './tool-resolver.service';
 import { ToolTransformService } from './tool-transform.service';
+import { SqlToolExecutorService } from './sql-tool-executor.service';
 
 @Injectable()
 export class ToolPipelineService {
@@ -11,27 +12,33 @@ export class ToolPipelineService {
     private readonly toolResolverService: ToolResolverService,
     private readonly rateCheckService: RateCheckService,
     private readonly httpToolExecutorService: HttpToolExecutorService,
+    private readonly sqlToolExecutorService: SqlToolExecutorService,
     private readonly toolTransformService: ToolTransformService,
     private readonly toolExecutionRecorderService: ToolExecutionRecorderService,
   ) {}
 
   async run(
-    toolSlug: string, 
+    toolSlug: string,
     input: Record<string, unknown> = {},
-    createdBy = 'rajanika') {
+    createdBy = 'rajanika',
+  ) {
     const resolved = await this.toolResolverService.resolveBySlug(toolSlug);
     const rateCheck = await this.rateCheckService.check(resolved.tool);
 
     const startedAt = Date.now();
 
-    const execution = await this.httpToolExecutorService.execute(
-      resolved.tool, input,);
+    const execution =
+      resolved.tool.type === 'http'
+        ? await this.httpToolExecutorService.execute(resolved.tool, input)
+        : resolved.tool.type === 'sql'
+          ? await this.sqlToolExecutorService.execute(resolved.tool, input)
+          : this.unsupportedToolType(resolved.tool.type);
+
     const transformed = this.toolTransformService.transform(
       resolved.tool,
       execution,
       input,
     );
-
 
     const record = await this.toolExecutionRecorderService.record({
       tool: resolved.tool,
@@ -56,5 +63,12 @@ export class ToolPipelineService {
       transformed,
       record,
     };
+  }
+
+  private unsupportedToolType(toolType: string): never {
+    throw new BadRequestException({
+      code: 'UNSUPPORTED_TOOL_TYPE',
+      message: `Unsupported Tool type: ${toolType}`,
+    });
   }
 }
