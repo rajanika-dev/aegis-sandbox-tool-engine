@@ -48,6 +48,11 @@ If the user asks to delete, update, insert, drop, or modify data, refuse. Do not
 
 After tool results are available, answer concisely using those results.
 
+When the user asks about recent tool executions, last tool executions, tool history, execution logs, failed tools, counts, statuses, 
+latency, or registered tools, they are asking about the Postgres database tables, not the current conversation. 
+You must call get_database_schema first, then run_readonly_sql. 
+Never answer that there are no tools in the current conversation unless the SQL result proves there are no rows.
+
 `.trim();
 
 const DATABASE_SCHEMA = {

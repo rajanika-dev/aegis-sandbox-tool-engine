@@ -54,6 +54,7 @@ export class AgentRequestRecorderService {
         answer: agentRequests.answer,
         planner: agentRequests.planner,
         errorMessage: agentRequests.errorMessage,
+        steps: agentRequests.steps,
       })
       .from(agentRequests)
       .orderBy(desc(agentRequests.createdAt))
