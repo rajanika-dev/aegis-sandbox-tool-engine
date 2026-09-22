@@ -1,4 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { LLM_PROVIDER } from './llm-provider.constants';
+import type { LlmMessage, LlmProvider } from './llm-provider.interface';
+import { ModelRegistryService } from './model-registry.service';
 
 export type LlmPlan = {
   intent: 'weather_lookup' | 'unsupported';
@@ -11,15 +14,13 @@ export type LlmPlan = {
   reason: string;
 };
 
-type OllamaChatResponse = {
-  message?: {
-    role?: string;
-    content?: string;
-  };
-};
-
 @Injectable()
 export class LlmPlannerService {
+  constructor(
+    @Inject(LLM_PROVIDER) private readonly llmProvider: LlmProvider,
+    private readonly modelRegistryService: ModelRegistryService,
+  ) {}
+
   async plan(message: string): Promise<LlmPlan | null> {
     const provider = process.env.LLM_PROVIDER ?? 'rule_based';
 
@@ -31,22 +32,10 @@ export class LlmPlannerService {
   }
 
   private async planWithOllama(message: string): Promise<LlmPlan> {
-    const baseUrl = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
-    const model = process.env.OLLAMA_MODEL ?? 'qwen2.5:1.5b';
-
-    const response = await fetch(`${baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        stream: false,
-        format: 'json',
-        messages: [
-          {
-            role: 'system',
-            content: `
+    const messages: LlmMessage[] = [
+      {
+        role: 'system',
+        content: `
 You are the planner for a local AEGIS mini tool execution engine.
 
 Your only job is to classify the user's request and extract tool inputs.
@@ -75,23 +64,20 @@ Rules:
 - If country is not mentioned and the location is in the US, use "US".
 - If the request is not about weather, return intent "unsupported".
 - If the city is unclear, return intent "unsupported".
-            `.trim(),
-          },
-          {
-            role: 'user',
-            content: message,
-          },
-        ],
-      }),
+        `.trim(),
+      },
+      {
+        role: 'user',
+        content: message,
+      },
+    ];
+
+    const result = await this.llmProvider.chat({
+      model: this.modelRegistryService.getDefaultModel().model,
+      messages,
+      responseFormat: 'json',
     });
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`Ollama returned ${response.status}: ${body}`);
-    }
-
-    const result = (await response.json()) as OllamaChatResponse;
-    const text = result.message?.content?.trim();
+    const text = result.message.content?.trim();
 
     if (!text) {
       return {
@@ -108,7 +94,10 @@ Rules:
     try {
       const parsed = JSON.parse(text) as Partial<LlmPlan>;
 
-      if (parsed.intent !== 'weather_lookup' && parsed.intent !== 'unsupported') {
+      if (
+        parsed.intent !== 'weather_lookup' &&
+        parsed.intent !== 'unsupported'
+      ) {
         return {
           intent: 'unsupported',
           confidence: 0,

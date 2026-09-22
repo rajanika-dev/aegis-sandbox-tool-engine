@@ -1,27 +1,14 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ToolPipelineService } from '../tools/tool-pipeline.service';
+import { LLM_PROVIDER } from './llm-provider.constants';
+import type {
+  LlmMessage,
+  LlmProvider,
+  LlmTool,
+} from './llm-provider.interface';
+import { ModelRegistryService } from './model-registry.service';
 
 type PipelineResult = Awaited<ReturnType<ToolPipelineService['run']>>;
-
-type OllamaRole = 'system' | 'user' | 'assistant' | 'tool';
-
-type OllamaToolCall = {
-  function: {
-    name: string;
-    arguments: Record<string, unknown> | string;
-  };
-};
-
-type OllamaMessage = {
-  role: OllamaRole;
-  content?: string;
-  tool_name?: string;
-  tool_calls?: OllamaToolCall[];
-};
-
-type OllamaChatResponse = {
-  message?: OllamaMessage;
-};
 
 type AgentStep = {
   order: number;
@@ -90,7 +77,11 @@ const DATABASE_SCHEMA = {
 
 @Injectable()
 export class AgentService {
-  constructor(private readonly toolPipelineService: ToolPipelineService) {}
+  constructor(
+    private readonly toolPipelineService: ToolPipelineService,
+    private readonly modelRegistryService: ModelRegistryService,
+    @Inject(LLM_PROVIDER) private readonly llmProvider: LlmProvider,
+  ) {}
 
   async query(message: string, createdBy = 'rajanika') {
     if (!message || typeof message !== 'string') {
@@ -104,7 +95,7 @@ export class AgentService {
   }
 
   private async runAgent(message: string, createdBy: string) {
-    const messages: OllamaMessage[] = [
+    const messages: LlmMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: message },
     ];
@@ -113,7 +104,15 @@ export class AgentService {
     const maxTurns = 6;
 
     for (let turn = 0; turn < maxTurns; turn += 1) {
-      const assistantMessage = await this.callOllama(messages);
+      const model = this.modelRegistryService.getDefaultModel();
+      const assistantMessage = (
+        await this.llmProvider.chat({
+          model: model.model,
+          messages,
+          tools: this.getFunctionTools(),
+          temperature: 0,
+        })
+      ).message;
       messages.push(assistantMessage);
 
       const toolCalls = assistantMessage.tool_calls ?? [];
@@ -157,52 +156,7 @@ export class AgentService {
     };
   }
 
-  private async callOllama(messages: OllamaMessage[]): Promise<OllamaMessage> {
-    const baseUrl = (
-      process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434'
-    ).replace(/\/$/, '');
-
-    const model = process.env.OLLAMA_MODEL ?? 'qwen2.5:1.5b';
-    const apiKey = process.env.OLLAMA_API_KEY;
-
-    const response = await fetch(`${baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-      },
-      body: JSON.stringify({
-        model,
-        stream: false,
-        messages,
-        tools: this.getFunctionTools(),
-        options: {
-          temperature: 0,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      throw new BadRequestException({
-        code: 'OLLAMA_CHAT_FAILED',
-        message: `Ollama returned ${response.status}`,
-        details: await response.text(),
-      });
-    }
-
-    const result = (await response.json()) as OllamaChatResponse;
-
-    if (!result.message) {
-      throw new BadRequestException({
-        code: 'OLLAMA_EMPTY_RESPONSE',
-        message: 'Ollama did not return a message.',
-      });
-    }
-
-    return result.message;
-  }
-
-  private getFunctionTools() {
+  private getFunctionTools(): LlmTool[] {
     return [
       {
         type: 'function',
@@ -465,9 +419,7 @@ export class AgentService {
   }
 
   private optionalString(value: unknown): string | undefined {
-    return typeof value === 'string' && value.trim()
-      ? value.trim()
-      : undefined;
+    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
   }
 
   private requireNumber(value: unknown, fieldName: string): number {
@@ -487,9 +439,7 @@ export class AgentService {
   }
 
   private asString(value: unknown): string | undefined {
-    return typeof value === 'string' && value.trim()
-      ? value.trim()
-      : undefined;
+    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
   }
 
   private errorMessage(error: unknown): string {
