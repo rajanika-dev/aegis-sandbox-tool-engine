@@ -9,6 +9,11 @@ type AgentQueryBody = {
   createdBy?: string;
 };
 
+type AgentCompareBody = {
+  question?: string;
+  modelIds?: string[];
+};
+
 type RequestLike = {
   headers?: Record<string, string | string[] | undefined>;
   ip?: string;
@@ -65,6 +70,11 @@ export class AgentController {
 
       throw error;
     }
+  }
+
+  @Post('compare')
+  compare(@Body() body: AgentCompareBody) {
+    return this.agentService.compare(body.question ?? '', body.modelIds);
   }
 
   @Get('requests/recent')

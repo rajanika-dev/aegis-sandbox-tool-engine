@@ -73,4 +73,34 @@ describe('AgentController request compatibility', () => {
       undefined,
     );
   });
+
+  it('exposes the compare endpoint through AgentService', async () => {
+    const agentService = {
+      query: jest.fn(),
+      compare: jest.fn().mockResolvedValue({
+        question: 'How many submissions exist?',
+        totalLatencyMs: 3,
+        results: [],
+      }),
+    };
+    const recorder = {
+      record: jest.fn(),
+      findRecent: jest.fn(),
+    };
+    const controller = new AgentController(
+      agentService as never,
+      recorder as never,
+    );
+
+    const result = await controller.compare({
+      question: 'How many submissions exist?',
+      modelIds: ['ollama-nemotron'],
+    });
+
+    expect(agentService.compare).toHaveBeenCalledWith(
+      'How many submissions exist?',
+      ['ollama-nemotron'],
+    );
+    expect(result).toMatchObject({ totalLatencyMs: 3 });
+  });
 });

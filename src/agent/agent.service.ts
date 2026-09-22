@@ -1,7 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ToolPipelineService } from '../tools/tool-pipeline.service';
 import type { LlmMessage, LlmTool } from './llm-provider.interface';
-import { ModelRegistryService } from './model-registry.service';
+import {
+  ModelRegistryService,
+  type LlmProviderSelection,
+} from './model-registry.service';
 
 type PipelineResult = Awaited<ReturnType<ToolPipelineService['run']>>;
 
@@ -13,6 +16,18 @@ type AgentStep = {
   executionId?: string;
   summary: string;
 };
+
+export type AgentComparisonResult = {
+  modelId: string;
+  provider: string;
+  status: 'success' | 'failure' | 'incomplete';
+  answer: string;
+  toolSteps: AgentStep[];
+  latencyMs: number;
+  error?: string;
+};
+
+const MAX_COMPARISON_MODELS = 5;
 
 const SYSTEM_PROMPT = `
 You are an AEGIS function-calling agent.
@@ -86,14 +101,97 @@ export class AgentService {
     }
 
     const selection = this.modelRegistryService.resolve(modelId);
+    const result = await this.runAgent(message.trim(), createdBy, selection);
 
-    return this.runAgent(message.trim(), createdBy, selection);
+    return {
+      answer: result.answer,
+      planner: result.planner,
+      modelId: result.modelId,
+      provider: result.provider,
+      steps: result.steps,
+    };
+  }
+
+  async compare(question: string, modelIds?: string[]) {
+    if (!question || typeof question !== 'string' || !question.trim()) {
+      throw new BadRequestException({
+        code: 'INVALID_AGENT_COMPARISON_QUERY',
+        message: 'question is required.',
+      });
+    }
+
+    if (modelIds !== undefined && !Array.isArray(modelIds)) {
+      throw new BadRequestException({
+        code: 'INVALID_MODEL_IDS',
+        message: 'modelIds must be an array of model IDs.',
+      });
+    }
+
+    const requestedModelIds =
+      modelIds && modelIds.length > 0
+        ? modelIds
+        : [this.modelRegistryService.getDefaultModel().id];
+
+    if (requestedModelIds.length > MAX_COMPARISON_MODELS) {
+      throw new BadRequestException({
+        code: 'MODEL_COMPARISON_LIMIT_EXCEEDED',
+        message: `A maximum of ${MAX_COMPARISON_MODELS} models can be compared at once.`,
+        maxModels: MAX_COMPARISON_MODELS,
+      });
+    }
+
+    const selections = requestedModelIds.map((modelId) =>
+      this.modelRegistryService.resolve(modelId),
+    );
+    const normalizedQuestion = question.trim();
+    const totalStartedAt = Date.now();
+    const results = await Promise.all(
+      selections.map((selection) =>
+        this.runComparison(normalizedQuestion, selection),
+      ),
+    );
+
+    return {
+      question: normalizedQuestion,
+      totalLatencyMs: Date.now() - totalStartedAt,
+      results,
+    };
+  }
+
+  private async runComparison(
+    question: string,
+    selection: LlmProviderSelection,
+  ): Promise<AgentComparisonResult> {
+    const startedAt = Date.now();
+
+    try {
+      const result = await this.runAgent(question, 'agent-compare', selection);
+
+      return {
+        modelId: result.modelId,
+        provider: result.provider,
+        status: result.status,
+        answer: result.answer,
+        toolSteps: result.steps,
+        latencyMs: Date.now() - startedAt,
+      };
+    } catch (error) {
+      return {
+        modelId: selection.model.id,
+        provider: selection.model.provider,
+        status: 'failure',
+        answer: '',
+        toolSteps: [],
+        latencyMs: Date.now() - startedAt,
+        error: this.errorMessage(error),
+      };
+    }
   }
 
   private async runAgent(
     message: string,
     createdBy: string,
-    selection: ReturnType<ModelRegistryService['resolve']>,
+    selection: LlmProviderSelection,
   ) {
     const messages: LlmMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },
@@ -124,6 +222,7 @@ export class AgentService {
           planner: 'ollama_function_calling',
           modelId: selection.model.id,
           provider: selection.model.provider,
+          status: 'success' as const,
           steps,
         };
       }
@@ -155,6 +254,7 @@ export class AgentService {
       planner: 'ollama_function_calling',
       modelId: selection.model.id,
       provider: selection.model.provider,
+      status: 'incomplete' as const,
       steps,
     };
   }

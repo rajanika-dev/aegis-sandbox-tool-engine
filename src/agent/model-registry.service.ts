@@ -52,7 +52,8 @@ export class ModelRegistryService {
   }
 
   resolve(modelId?: string): LlmProviderSelection {
-    const model = modelId ? this.getModel(modelId) : this.getDefaultModel();
+    const model =
+      modelId === undefined ? this.getDefaultModel() : this.getModel(modelId);
     const provider = this.providers.find(
       (candidate) => candidate.id === model.provider,
     );
