@@ -1,6 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { LLM_PROVIDER } from './llm-provider.constants';
-import type { LlmMessage, LlmProvider } from './llm-provider.interface';
+import { Injectable } from '@nestjs/common';
+import type { LlmMessage } from './llm-provider.interface';
 import { ModelRegistryService } from './model-registry.service';
 
 export type LlmPlan = {
@@ -16,10 +15,7 @@ export type LlmPlan = {
 
 @Injectable()
 export class LlmPlannerService {
-  constructor(
-    @Inject(LLM_PROVIDER) private readonly llmProvider: LlmProvider,
-    private readonly modelRegistryService: ModelRegistryService,
-  ) {}
+  constructor(private readonly modelRegistryService: ModelRegistryService) {}
 
   async plan(message: string): Promise<LlmPlan | null> {
     const provider = process.env.LLM_PROVIDER ?? 'rule_based';
@@ -72,8 +68,9 @@ Rules:
       },
     ];
 
-    const result = await this.llmProvider.chat({
-      model: this.modelRegistryService.getDefaultModel().model,
+    const selection = this.modelRegistryService.resolve();
+    const result = await selection.provider.chat({
+      model: selection.model.model,
       messages,
       responseFormat: 'json',
     });

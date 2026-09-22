@@ -5,7 +5,7 @@ import { AgentService } from './agent.service';
 import { LlmPlannerService } from './llm-planner.service';
 import { DatabaseModule } from '../db/database.module';
 import { AgentRequestRecorderService } from './agent-request-recorder.service';
-import { LLM_PROVIDER } from './llm-provider.constants';
+import { LLM_PROVIDERS } from './llm-provider.constants';
 import { ModelRegistryService } from './model-registry.service';
 import { OllamaProvider } from './ollama.provider';
 
@@ -16,12 +16,13 @@ import { OllamaProvider } from './ollama.provider';
     AgentService,
     LlmPlannerService,
     AgentRequestRecorderService,
-    ModelRegistryService,
     OllamaProvider,
     {
-      provide: LLM_PROVIDER,
-      useExisting: OllamaProvider,
+      provide: LLM_PROVIDERS,
+      useFactory: (ollamaProvider: OllamaProvider) => [ollamaProvider],
+      inject: [OllamaProvider],
     },
+    ModelRegistryService,
   ],
 })
 export class AgentModule {}

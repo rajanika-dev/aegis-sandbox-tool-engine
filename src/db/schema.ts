@@ -61,6 +61,7 @@ export const agentRequests = pgTable('agent_requests', {
 
   message: text('message').notNull(),
   createdBy: text('created_by').notNull().default('demo-user'),
+  modelId: text('model_id'),
 
   status: text('status').notNull(),
   answer: text('answer'),
@@ -83,5 +84,4 @@ export type ToolExecution = typeof toolExecutions.$inferSelect;
 export type NewToolExecution = typeof toolExecutions.$inferInsert;
 export type AgentRequest = typeof agentRequests.$inferSelect;
 export type NewAgentRequest = typeof agentRequests.$inferInsert;
-
 

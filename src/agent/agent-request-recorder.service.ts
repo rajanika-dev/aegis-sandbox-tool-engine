@@ -8,6 +8,7 @@ import { agentRequests } from '../db/schema';
 type RecordAgentRequestInput = {
   message: string;
   createdBy: string;
+  modelId?: string;
   status: 'success' | 'failure';
   answer?: string;
   planner?: string;
@@ -30,6 +31,7 @@ export class AgentRequestRecorderService {
       .values({
         message: input.message,
         createdBy: input.createdBy,
+        modelId: input.modelId,
         status: input.status,
         answer: input.answer,
         planner: input.planner,
@@ -49,6 +51,7 @@ export class AgentRequestRecorderService {
         id: agentRequests.id,
         createdAt: agentRequests.createdAt,
         createdBy: agentRequests.createdBy,
+        modelId: agentRequests.modelId,
         message: agentRequests.message,
         status: agentRequests.status,
         answer: agentRequests.answer,

@@ -1,10 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { LLM_PROVIDERS } from './llm-provider.constants';
+import type { LlmProvider } from './llm-provider.interface';
 
 export type LlmModelDefinition = {
   id: string;
   provider: string;
   model: string;
+};
+
+export type LlmProviderSelection = {
+  model: LlmModelDefinition;
+  provider: LlmProvider;
 };
 
 const DEFAULT_OLLAMA_MODEL = 'qwen2.5:1.5b';
@@ -14,7 +21,10 @@ export class ModelRegistryService {
   private readonly models: LlmModelDefinition[];
   private readonly defaultModelId: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject(LLM_PROVIDERS) private readonly providers: LlmProvider[],
+  ) {
     this.models = this.readModels();
     this.defaultModelId =
       this.configService.get<string>('DEFAULT_MODEL_ID') ?? this.models[0].id;
@@ -32,10 +42,30 @@ export class ModelRegistryService {
     const model = this.models.find((candidate) => candidate.id === modelId);
 
     if (!model) {
-      throw new Error(`Configured model was not found: ${modelId}`);
+      throw new BadRequestException({
+        code: 'UNKNOWN_MODEL_ID',
+        message: `Unknown modelId: ${modelId}`,
+      });
     }
 
     return { ...model };
+  }
+
+  resolve(modelId?: string): LlmProviderSelection {
+    const model = modelId ? this.getModel(modelId) : this.getDefaultModel();
+    const provider = this.providers.find(
+      (candidate) => candidate.id === model.provider,
+    );
+
+    if (!provider) {
+      throw new BadRequestException({
+        code: 'MODEL_PROVIDER_NOT_CONFIGURED',
+        message: `No provider is configured for modelId "${model.id}".`,
+        provider: model.provider,
+      });
+    }
+
+    return { model, provider };
   }
 
   private readModels(): LlmModelDefinition[] {

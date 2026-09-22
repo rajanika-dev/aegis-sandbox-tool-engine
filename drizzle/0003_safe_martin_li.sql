@@ -1,0 +1,1 @@
+ALTER TABLE "agent_requests" ADD COLUMN "model_id" text;

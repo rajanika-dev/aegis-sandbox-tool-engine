@@ -3,7 +3,9 @@ import { AgentRequestRecorderService } from './agent-request-recorder.service';
 import { AgentService } from './agent.service';
 
 type AgentQueryBody = {
-  message: string;
+  message?: string;
+  question?: string;
+  modelId?: string;
   createdBy?: string;
 };
 
@@ -24,11 +26,15 @@ export class AgentController {
 
   @Post('query')
   async query(@Body() body: AgentQueryBody, @Req() request: RequestLike) {
-    const message = body.message;
+    const message = body.message ?? body.question ?? '';
     const createdBy = body.createdBy ?? 'demo-user';
 
     try {
-      const result = await this.agentService.query(message, createdBy);
+      const result = await this.agentService.query(
+        message,
+        createdBy,
+        body.modelId,
+      );
 
       const record = await this.agentRequestRecorderService.record({
         message,
@@ -36,6 +42,7 @@ export class AgentController {
         status: 'success',
         answer: result.answer,
         planner: result.planner,
+        modelId: result.modelId,
         steps: result.steps,
         userAgent: this.getHeader(request, 'user-agent'),
         ipAddress: this.getIpAddress(request),
@@ -49,6 +56,7 @@ export class AgentController {
       await this.agentRequestRecorderService.record({
         message: message ?? '',
         createdBy,
+        modelId: body.modelId,
         status: 'failure',
         errorMessage: this.getErrorMessage(error),
         userAgent: this.getHeader(request, 'user-agent'),

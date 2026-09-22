@@ -1,1 +1,1 @@
-export const LLM_PROVIDER = Symbol('LLM_PROVIDER');
+export const LLM_PROVIDERS = Symbol('LLM_PROVIDERS');

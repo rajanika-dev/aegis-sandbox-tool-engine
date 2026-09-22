@@ -1,11 +1,6 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ToolPipelineService } from '../tools/tool-pipeline.service';
-import { LLM_PROVIDER } from './llm-provider.constants';
-import type {
-  LlmMessage,
-  LlmProvider,
-  LlmTool,
-} from './llm-provider.interface';
+import type { LlmMessage, LlmTool } from './llm-provider.interface';
 import { ModelRegistryService } from './model-registry.service';
 
 type PipelineResult = Awaited<ReturnType<ToolPipelineService['run']>>;
@@ -80,10 +75,9 @@ export class AgentService {
   constructor(
     private readonly toolPipelineService: ToolPipelineService,
     private readonly modelRegistryService: ModelRegistryService,
-    @Inject(LLM_PROVIDER) private readonly llmProvider: LlmProvider,
   ) {}
 
-  async query(message: string, createdBy = 'rajanika') {
+  async query(message: string, createdBy = 'rajanika', modelId?: string) {
     if (!message || typeof message !== 'string') {
       throw new BadRequestException({
         code: 'INVALID_AGENT_QUERY',
@@ -91,10 +85,16 @@ export class AgentService {
       });
     }
 
-    return this.runAgent(message.trim(), createdBy);
+    const selection = this.modelRegistryService.resolve(modelId);
+
+    return this.runAgent(message.trim(), createdBy, selection);
   }
 
-  private async runAgent(message: string, createdBy: string) {
+  private async runAgent(
+    message: string,
+    createdBy: string,
+    selection: ReturnType<ModelRegistryService['resolve']>,
+  ) {
     const messages: LlmMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: message },
@@ -104,10 +104,9 @@ export class AgentService {
     const maxTurns = 6;
 
     for (let turn = 0; turn < maxTurns; turn += 1) {
-      const model = this.modelRegistryService.getDefaultModel();
       const assistantMessage = (
-        await this.llmProvider.chat({
-          model: model.model,
+        await selection.provider.chat({
+          model: selection.model.model,
           messages,
           tools: this.getFunctionTools(),
           temperature: 0,
@@ -123,6 +122,8 @@ export class AgentService {
             assistantMessage.content?.trim() ||
             'The agent did not return a final answer.',
           planner: 'ollama_function_calling',
+          modelId: selection.model.id,
+          provider: selection.model.provider,
           steps,
         };
       }
@@ -152,6 +153,8 @@ export class AgentService {
       answer:
         'The agent reached the maximum number of tool-calling turns before producing a final answer.',
       planner: 'ollama_function_calling',
+      modelId: selection.model.id,
+      provider: selection.model.provider,
       steps,
     };
   }
