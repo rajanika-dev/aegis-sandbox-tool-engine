@@ -17,13 +17,25 @@ Resolve → Rate Check → Execute → Transform → Record
 - NestJS
 - Fastify adapter
 - TypeScript strict mode
-- PostgreSQL 16 through Docker
-- Redis 7 through Docker
+- PostgreSQL 16
+- Redis 7
 - Drizzle ORM planned for database schema/migrations
+
+## Server-first development
+
+The recommended workflow is to edit code and manage Git from your laptop, while
+running PostgreSQL, Redis, the NestJS app, and model access from a remote Ubuntu
+server. Docker is optional and is not required for this setup.
+
+See [docs/SERVER_SETUP.md](docs/SERVER_SETUP.md) for the server installation,
+environment configuration, migrations, PM2 process management, health checks,
+and safe access to `/demo`.
 
 ## Current Status
 
-The local backend is running and connects to both Postgres and Redis.
+The backend is intended to run on a server and connect to PostgreSQL and Redis
+there. The laptop is used for editing and Git; see the server setup guide for
+runtime operations.
 
 The `/health` endpoint confirms:
 
